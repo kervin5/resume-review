@@ -6,21 +6,18 @@ class MyDocument extends Document {
       <Html lang="en">
         <Head>
           <link rel="icon" href="/favicon.ico" />
-          <meta
-            name="description"
-            content="Generate your next Twitter bio in seconds."
-          />
+          <meta name="description" content="Review your resume in seconds." />
           <meta property="og:site_name" content="twitterbio.io" />
           <meta
             property="og:description"
-            content="Generate your next Twitter bio in seconds."
+            content="Review your resume in seconds."
           />
-          <meta property="og:title" content="Twitter Bio Generator" />
+          <meta property="og:title" content="Resume Reviewer" />
           <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content="Twitter Bio Generator" />
+          <meta name="twitter:title" content="Resume Reviewer" />
           <meta
             name="twitter:description"
-            content="Generate your next Twitter bio in seconds."
+            content="Review your resume in seconds."
           />
           <meta
             property="og:image"
