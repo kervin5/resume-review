@@ -3,7 +3,6 @@ import Head from "next/head";
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import DropDown, { VibeType } from "../components/DropDown";
 import Footer from "../components/Footer";
 import Github from "../components/GitHub";
 import Header from "../components/Header";
@@ -13,41 +12,94 @@ import {
   ParsedEvent,
   ReconnectInterval,
 } from "eventsource-parser";
+import Upload from "../components/Upload";
+// import { useCompletion } from "ai/react";
 
 const Home: NextPage = () => {
+  // const {
+  //   completion,
+  //   input,
+  //   stop,
+  //   isLoading,
+  //   handleInputChange,
+  //   handleSubmit,
+  // } = useCompletion({
+  //   api: "/api/generate_hugging_face",
+  // });
+
   const [loading, setLoading] = useState(false);
-  const [bio, setBio] = useState("");
-  const [vibe, setVibe] = useState<VibeType>("Professional");
-  const [generatedBios, setGeneratedBios] = useState<String>("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [resume, setResume] = useState<File | null>(null);
 
-  const bioRef = useRef<null | HTMLDivElement>(null);
+  const [generatedRecommendations, setGeneratedRecommendations] =
+    useState<string>("");
 
-  const scrollToBios = () => {
-    if (bioRef.current !== null) {
-      bioRef.current.scrollIntoView({ behavior: "smooth" });
+  const recommendationsRef = useRef<null | HTMLDivElement>(null);
+
+  const scrollToRecommendations = () => {
+    if (recommendationsRef.current !== null) {
+      recommendationsRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const prompt = `Generate 2 ${vibe} twitter biographies with no hashtags and clearly labeled "1." and "2.". ${
-    vibe === "Funny"
-      ? "Make sure there is a joke in there and it's a little ridiculous."
-      : null
-  }
-      Make sure each generated biography is less than 160 characters, has short sentences that are found in Twitter bios, and base them on this context: ${bio}${
-    bio.slice(-1) === "." ? "" : "."
-  }`;
+  const convertFileToText = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch("/api/convert_file_to_text", {
+      method: "POST",
+      body: formData,
+    });
 
-  const generateBio = async (e: any) => {
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+
+    const data = await response.json();
+    return data.text;
+  };
+
+  const jobDescriptionIsLink = (jobDescription: string) => {
+    return jobDescription.startsWith("http");
+  };
+
+  const generateRecommendations = async (e: any) => {
     e.preventDefault();
-    setGeneratedBios("");
+    setGeneratedRecommendations("");
     setLoading(true);
-    const response = await fetch("/api/generate", {
+
+    let jobDescriptionText = jobDescription;
+
+    if (jobDescriptionIsLink(jobDescription)) {
+      const response = await fetch("/api/convert_website_to_text", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: jobDescription,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+
+      const data = await response.json();
+      jobDescriptionText = data.text;
+    }
+
+    console.log({ jobDescriptionText });
+
+    const resumeText = await convertFileToText(resume as File);
+
+    const response = await fetch("/api/generate_open_ai", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        prompt,
+        jobDescription: jobDescriptionText,
+        resume: resumeText,
       }),
     });
 
@@ -57,6 +109,7 @@ const Home: NextPage = () => {
 
     // This data is a ReadableStream
     const data = response.body;
+
     if (!data) {
       return;
     }
@@ -65,51 +118,55 @@ const Home: NextPage = () => {
       if (event.type === "event") {
         const data = event.data;
         try {
-          const text = JSON.parse(data).text ?? ""
-          setGeneratedBios((prev) => prev + text);
+          const text = JSON.parse(data).text ?? "";
+          setGeneratedRecommendations((prev) => prev + text);
         } catch (e) {
           console.error(e);
         }
       }
-    }
+    };
 
     // https://web.dev/streams/#the-getreader-and-read-methods
     const reader = data.getReader();
+
     const decoder = new TextDecoder();
     const parser = createParser(onParse);
+
     let done = false;
     while (!done) {
       const { value, done: doneReading } = await reader.read();
       done = doneReading;
+
       const chunkValue = decoder.decode(value);
+      // setGeneratedRecommendations((prev) => prev + chunkValue);
       parser.feed(chunkValue);
     }
-    scrollToBios();
+    scrollToRecommendations();
     setLoading(false);
   };
 
   return (
     <div className="flex max-w-5xl mx-auto flex-col items-center justify-center py-2 min-h-screen">
       <Head>
-        <title>Twitter Bio Generator</title>
+        <title>Resume Reviewer</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <Header />
       <main className="flex flex-1 w-full flex-col items-center justify-center text-center px-4 mt-12 sm:mt-20">
-        <a
+        {/* <a
           className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 shadow-md transition-colors hover:bg-gray-100 mb-5"
-          href="https://github.com/Nutlope/twitterbio"
+          href="https://github.com/kervin5/resume-reviewer"
           target="_blank"
           rel="noopener noreferrer"
         >
           <Github />
           <p>Star on GitHub</p>
-        </a>
+        </a> */}
         <h1 className="sm:text-6xl text-4xl max-w-[708px] font-bold text-slate-900">
-          Generate your next Twitter bio using chatGPT
+          Determine if your resume is a good fit for a job description.
         </h1>
-        <p className="text-slate-500 mt-5">47,118 bios generated so far.</p>
+        <p className="text-slate-500 mt-5">47,118 resumes reviewed.</p>
         <div className="max-w-xl w-full">
           <div className="flex mt-10 items-center space-x-3">
             <Image
@@ -120,36 +177,46 @@ const Home: NextPage = () => {
               className="mb-5 sm:mb-0"
             />
             <p className="text-left font-medium">
-              Copy your current bio{" "}
+              Enter the job description{" "}
               <span className="text-slate-500">
-                (or write a few sentences about yourself)
+                (or a link to the job description)
               </span>
               .
             </p>
           </div>
           <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
+            required
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
             rows={4}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black my-5"
             placeholder={
-              "e.g. Senior Developer Advocate @vercel. Tweeting about web development, AI, and React / Next.js. Writing nutlope.substack.com."
+              "e.g. https://resources.workable.com/mortgage-loan-officer-job-description\n or \nWe are looking for a chef to join our team. You will be responsible for preparing and cooking meals for our customers. You will also be responsible for cleaning and maintaining the kitchen."
             }
           />
           <div className="flex mb-5 items-center space-x-3">
             <Image src="/2-black.png" width={30} height={30} alt="1 icon" />
-            <p className="text-left font-medium">Select your vibe.</p>
+            <p className="text-left font-medium">
+              Upload your resume.{" "}
+              <span className="text-slate-500">
+                (Image, PDF, or Word Document)
+              </span>
+            </p>
           </div>
-          <div className="block">
+          {/* <div className="block">
             <DropDown vibe={vibe} setVibe={(newVibe) => setVibe(newVibe)} />
+          </div> */}
+
+          <div className="block">
+            <Upload handleFileUpload={(file) => setResume(file)} />
           </div>
 
           {!loading && (
             <button
               className="bg-black rounded-xl text-white font-medium px-4 py-2 sm:mt-10 mt-8 hover:bg-black/80 w-full"
-              onClick={(e) => generateBio(e)}
+              onClick={(e) => generateRecommendations(e)}
             >
-              Generate your bio &rarr;
+              Review resume &rarr;
             </button>
           )}
           {loading && (
@@ -168,36 +235,31 @@ const Home: NextPage = () => {
         />
         <hr className="h-px bg-gray-700 border-1 dark:bg-gray-700" />
         <div className="space-y-10 my-10">
-          {generatedBios && (
+          {generatedRecommendations && (
             <>
               <div>
                 <h2
                   className="sm:text-4xl text-3xl font-bold text-slate-900 mx-auto"
-                  ref={bioRef}
+                  ref={recommendationsRef}
                 >
-                  Your generated bios
+                  Resume Review
                 </h2>
               </div>
               <div className="space-y-8 flex flex-col items-center justify-center max-w-xl mx-auto">
-                {generatedBios
-                  .substring(generatedBios.indexOf("1") + 3)
-                  .split("2.")
-                  .map((generatedBio) => {
-                    return (
-                      <div
-                        className="bg-white rounded-xl shadow-md p-4 hover:bg-gray-100 transition cursor-copy border"
-                        onClick={() => {
-                          navigator.clipboard.writeText(generatedBio);
-                          toast("Bio copied to clipboard", {
-                            icon: "✂️",
-                          });
-                        }}
-                        key={generatedBio}
-                      >
-                        <p>{generatedBio}</p>
-                      </div>
-                    );
-                  })}
+                {generatedRecommendations.length > 0 && (
+                  <div
+                    className="bg-white rounded-xl shadow-md p-4 hover:bg-gray-100 transition cursor-copy border"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedRecommendations);
+                      toast("Recommendations copied to clipboard", {
+                        icon: "✂️",
+                      });
+                    }}
+                    key={generatedRecommendations}
+                  >
+                    <p>{generatedRecommendations}</p>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -209,3 +271,8 @@ const Home: NextPage = () => {
 };
 
 export default Home;
+
+// .substring(generatedRecommendations.indexOf("1") + 3)
+// .split("Bio")
+// .filter((generatedBio) => generatedBio.length > 0)
+// .slice(0, 2)
