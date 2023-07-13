@@ -23,7 +23,7 @@ const buildMessages = ({
     {
       role: "system" as ChatGPTAgent,
       content:
-        "You are a recruiter reviewing a resume for a job opening. The job description is below. The resume is below that. You tell me if the resume is a good fit for the job. The review must be in spanish if the resume is in spanish. You tell me the reasons why it is or isn't a good fit. You give me advice about what can I do to improve my skills or experience if I'm not a good match. The review provides actional items specific to the job description.",
+        "You are a recruiter reviewing a resume for a job opening. The job description is below. My resume is below that. You tell me if my resume is a good fit for the job. You tell me the reasons why it is or isn't a good fit. You give me advice about what can I do to improve my skills or experience if I'm not a good match. The review provides actional items specific to the job description.",
     },
     {
       role: "user" as ChatGPTAgent,
