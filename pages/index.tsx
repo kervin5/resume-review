@@ -257,7 +257,15 @@ const Home: NextPage = () => {
                     }}
                     key={generatedRecommendations}
                   >
-                    <p>{generatedRecommendations}</p>
+                    {generatedRecommendations.split("\n").map((line, i) => (
+                      <p
+                        key={i}
+                        className="text-left mb-2
+                      "
+                      >
+                        {line}
+                      </p>
+                    ))}
                   </div>
                 )}
               </div>
